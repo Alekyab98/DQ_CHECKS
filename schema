@@ -1,0 +1,21 @@
+CREATE TABLE `vz-it-np-gudv-dev-dtwndo-0.aid_nwperf_aether_core_tbls.aether_amf_performance_counttest`
+(
+  trans_dt DATE NOT NULL OPTIONS(description="Partition Column- day of event_time"),
+  event_time TIMESTAMP NOT NULL OPTIONS(description="event time of the record from the source"),
+  vendor STRING OPTIONS(description="name of the vendor (eg., ericsson, oracle etc)"),
+  fqdn STRING OPTIONS(description="kubernetes pod/instance name"),
+  metric_name STRING NOT NULL OPTIONS(description="name of the key"),
+  metric_sum_value BIGNUMERIC OPTIONS(description="aggregated value for sum"),
+  metric_increase_value BIGNUMERIC OPTIONS(description="aggregated value for increase"),
+  datapoints_count INT64 OPTIONS(description="data points count"),
+  schedule_time DATETIME NOT NULL OPTIONS(description="scheduled timestamp of airflow job"),
+  created_timestamp TIMESTAMP DEFAULT current_timestamp() NOT NULL OPTIONS(description="Auto Generated record created time"),
+  updated_timestamp TIMESTAMP NOT NULL OPTIONS(description="time when record got updated in gudv table")
+)
+PARTITION BY trans_dt
+CLUSTER BY fqdn, vendor, event_time
+OPTIONS(
+  kms_key_name="projects/vz-it-np-d0sv-vsadkms-0/locations/us/keyRings/vz-it-np-kr-aid/cryptoKeys/vz-it-np-kms-gudv/cryptoKeyVersions/11",
+  require_partition_filter=true,
+  description="This table holds the performance metrics of one of 5G core network function - AMF and is responsible for managing the connection of devices to the network and for tracking their location."
+);
