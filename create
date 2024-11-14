@@ -1,0 +1,29 @@
+import pandas as pd
+
+def extract_grafana_expression(input_file, output_txt):
+    try:
+        
+        df = pd.read_excel(input_file)
+
+        with open(output_txt, 'w') as txt_file:
+            for index, row in df.iterrows():
+                
+                view_column_name = row['view_column_name']  
+                grafana_expression = row['grafana_expression']  
+                
+                txt_file.write(f"{view_column_name}|{grafana_expression}\n")
+
+        print("Successfully processed the Excel file.")
+
+    except FileNotFoundError:
+        print(f"Error: The file {input_file} was not found.")
+    except KeyError as e:
+        print(f"Error: Missing column in Excel - {e}")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+# Example usage:
+input_file = r"C:\Users\billaal\Documents\python\All_metrics\upf_offset.csv"
+output_txt = r"C:\Users\billaal\Documents\python\All_metrics\upf_offset.txt"
+
+extract_grafana_expression(input_file, output_txt) 
