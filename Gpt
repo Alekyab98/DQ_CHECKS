@@ -1,0 +1,68 @@
+CREATE OR REPLACE PROCEDURE ${aether_5g_core_module_tgt_dataset_name}.aether_amf_performance_sp(process_ts STRING, trans_ts STRING, window_hour int64, window_interval int64)
+options(strict_mode=False)
+BEGIN
+  -- Insert entry into audit table
+  MERGE `${target_project_id}.${audit_tgt_dataset_name}.${audit_target_tblname}` tgt
+  USING
+    (SELECT
+      CONCAT("5g core amf hourly process") as prc_name,
+      safe_cast(trans_ts AS datetime) AS start_time,
+      safe_cast(SPLIT(trans_ts,' ')[OFFSET(0)] AS date) src_prc_dt
+    ) src
+  ON (src.prc_name = tgt.PROCESS_NAME AND src.START_TIME = tgt.START_TIME)
+  WHEN NOT MATCHED THEN 
+    INSERT (
+      PROCESS_MODULE, 
+      SCHEDULER, 
+      PROCESS_NAME, 
+      SOURCE_NAME, 
+      TARGET_NAME, 
+      START_TIME, 
+      END_TIME, 
+      PROCESS_DT, 
+      NUM_RECORDS_AFFECTED, 
+      STATUS, 
+      RETURN_MESSAGE
+    )
+    VALUES (
+      "aether",
+      "airflow",
+      prc_name,
+      "${aether_5g_core_module_src_project_id}.${aether_5g_core_module_src_dataset_name}.${aether_5g_core_module_src_amf_tblname}",
+      "${aether_5g_core_module_tgt_project_id}.${aether_5g_core_module_tgt_dataset_name}.${aether_5g_core_module_tgt_amf_tblname}",
+      start_time,
+      NULL,
+      src_prc_dt,
+      NULL,
+      "Started",
+      NULL
+    );
+
+  -- Main merge operation
+  MERGE INTO `${aether_5g_core_module_tgt_project_id}.${aether_5g_core_module_tgt_dataset_name}.${aether_5g_core_module_tgt_amf_tblname}` tgt
+  USING (
+    SELECT
+      event_time AS event_time,
+      "ericsson" AS vendor,
+      fqdn,
+      KEY AS metric_name,
+      safe_cast(increase_value AS bignumeric) AS metric_increase_value,
+      safe_cast(sum_value AS bignumeric) AS metric_sum_value,
+      trans_dt,
+      datetime(process_ts) AS schedule_time,
+      current_timestamp AS updated_timestamp,
+      COUNT(*) OVER (PARTITION BY trans_dt, event_time, fqdn, KEY) AS datapoints_count  -- Calculate datapoints_count once
+    FROM (
+      WITH event_timestamps AS (
+        SELECT DISTINCT DATETIME_TRUNC(timestamp(`timestamp`), HOUR) AS trans_hr 
+        FROM `${aether_5g_core_module_src_project_id}.${aether_5g_core_module_src_dataset_name}.${aether_5g_core_module_src_amf_tblname}`
+        WHERE DATETIME_TRUNC(timestamp(insert_date_utc), HOUR) IN 
+              UNNEST(GENERATE_TIMESTAMP_ARRAY(TIMESTAMP_SUB(DATETIME_TRUNC(timestamp(trans_ts), HOUR), INTERVAL window_interval - 1 HOUR), DATETIME_TRUNC(timestamp(trans_ts), HOUR), INTERVAL window_hour HOUR))
+        AND trans_dt IS NOT NULL
+      ),
+      base_data AS (
+        SELECT *,
+               MD5(labels) AS checksum
+        FROM (
+          SELECT DISTINCT
+            TIMESTAMP_SECONDS(CAST(FLOOR(UNIX_SECONDS(`timestamp`) / (window_hour * 60 * 60)) * (window_hour * 60 * 60) AS INT64))
