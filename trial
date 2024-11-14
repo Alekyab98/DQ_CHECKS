@@ -15,7 +15,7 @@ safe_cast(sum_value as bignumeric) as metric_sum_value,
 trans_dt,
 datetime(process_ts) as schedule_time,
 current_timestamp as updated_timestamp,
-row_count as datapoints_count
+datapoints_count as datapoints_count
 from
 (
 WITH event_timestamps as
@@ -66,12 +66,6 @@ SAFE_CAST(LAG(value) OVER (PARTITION BY fqdn, checksum, instance, KEY, DATETIME_
 from base_data)
 ),
 
-count_cal as(
-  select *, count(value) OVER (PARTITION BY fqdn ,checksum, instance, KEY, DATETIME_TRUNC(timestamp,HOUR) ORDER BY `timestamp`) as 
-      row_count
-      from window_data
-),
-
 reset_adjusted AS (
   SELECT
     event_time,
@@ -81,16 +75,16 @@ reset_adjusted AS (
     MAX(labels) AS labels,
     checksum,
     KEY,
-    max(row_count)as row_count,
     sum(value) as sum_value,
     SUM(CASE
         WHEN prev_value is NULL THEN 0
         WHEN has_reset =1 THEN value
         ELSE value - IFNULL(prev_value,0)
     END
-      ) AS increase_value
+      ) AS increase_value,
+      count(value) as datapoints_count
   FROM
-    count_cal
+    window_data
   GROUP BY
   trans_dt,
     event_time,
@@ -104,9 +98,9 @@ SELECT
   fqdn,
   trans_dt,
   KEY,
-  max(row_count)as row_count,
   sum(increase_value) as increase_value,
-  sum(sum_value) as sum_value
+  sum(sum_value) as sum_value,
+  sum(datapoints_count) as datapoints_count
 FROM
   reset_adjusted
 group BY
@@ -132,7 +126,7 @@ ON tgt.trans_dt = src.trans_dt
       tgt.metric_sum_value = src.metric_sum_value,
       tgt.schedule_time = src.schedule_time,
       tgt.updated_timestamp = src.updated_timestamp,
-      tgt.datapoints_count = src.datapoints_count  -- Update datapoints_count with the calculated value
+      tgt.datapoints_count = src.datapoints_count  
   WHEN NOT MATCHED THEN
     INSERT (
       event_time,
@@ -144,7 +138,7 @@ ON tgt.trans_dt = src.trans_dt
       trans_dt,
       schedule_time,
       updated_timestamp,
-      datapoints_count  -- Insert datapoints_count
+      datapoints_count  
     )
     VALUES (
       src.event_time,
@@ -156,6 +150,6 @@ ON tgt.trans_dt = src.trans_dt
       src.trans_dt,
       src.schedule_time,
       src.updated_timestamp,
-      src.datapoints_count  -- Insert the calculated datapoints_count
+      src.datapoints_count  
     );
 END;
