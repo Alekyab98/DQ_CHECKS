@@ -1,0 +1,13 @@
+def create_txt_files_from_csv(input_csv, output_txt):
+    with open(input_csv, 'rb') as csv_file, open(output_txt, 'wb') as txt_file:
+        # Read the CSV as binary and decode lines with errors ignored
+        lines = csv_file.readlines()
+        for line in lines:
+            # Decode each line as UTF-8 (ignoring errors) and write it to the text file
+            decoded_line = line.decode('utf-8', errors='ignore').strip()
+            if ',' in decoded_line:  # Assuming CSV columns are comma-separated
+                columns = decoded_line.split(',', maxsplit=1)
+                if len(columns) >= 2:
+                    metric_name, query = columns[0].strip(), columns[1].strip()
+                    txt_file.write(f"{metric_name} | {query}\n".encode('utf-8'))
+    print(f"TXT file created: {output_txt}")
