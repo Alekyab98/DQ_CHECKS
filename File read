@@ -1,13 +1,13 @@
 def create_txt_files_from_csv(input_csv, output_txt):
-    with open(input_csv, 'rb') as csv_file, open(output_txt, 'wb') as txt_file:
-        # Read the CSV as binary and decode lines with errors ignored
-        lines = csv_file.readlines()
-        for line in lines:
-            # Decode each line as UTF-8 (ignoring errors) and write it to the text file
-            decoded_line = line.decode('utf-8', errors='ignore').strip()
-            if ',' in decoded_line:  # Assuming CSV columns are comma-separated
-                columns = decoded_line.split(',', maxsplit=1)
-                if len(columns) >= 2:
-                    metric_name, query = columns[0].strip(), columns[1].strip()
-                    txt_file.write(f"{metric_name} | {query}\n".encode('utf-8'))
-    print(f"TXT file created: {output_txt}")
+    try:
+        with open(input_csv, 'r', encoding='utf-8') as csv_file, open(output_txt, 'w') as txt_file:
+            reader = csv.DictReader(csv_file)
+            for row in reader:
+                # Extract grafana_expression and view_column_name
+                expression = row['grafana_expression'].strip()
+                column_name = row['view_column_name'].strip()
+                # Write to the .txt file in the expected format
+                txt_file.write(f"{column_name} | {expression}\n")
+        print(f"TXT file created: {output_txt}")
+    except Exception as e:
+        print(f"Error processing file {input_csv}: {e}")
