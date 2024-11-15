@@ -1,13 +1,36 @@
-def create_txt_files_from_csv(input_csv, output_txt):
+import pandas as pd
+
+def extract_grafana_expression(input_file, output_txt):
     try:
-        with open(input_csv, 'r', encoding='utf-8') as csv_file, open(output_txt, 'w') as txt_file:
-            reader = csv.DictReader(csv_file)
-            for row in reader:
-                # Extract grafana_expression and view_column_name
-                expression = row['grafana_expression'].strip()
-                column_name = row['view_column_name'].strip()
-                # Write to the .txt file in the expected format
-                txt_file.write(f"{column_name} | {expression}\n")
+        # Check if the input file is CSV or Excel and read accordingly
+        if input_file.endswith('.csv'):
+            df = pd.read_csv(input_file)
+        elif input_file.endswith('.xlsx'):
+            df = pd.read_excel(input_file)
+        else:
+            raise ValueError("Unsupported file format. Use .csv or .xlsx.")
+
+        # Open the output text file for writing
+        with open(output_txt, 'w') as txt_file:
+            for index, row in df.iterrows():
+                # Extract the required columns
+                view_column_name = row['view_column_name']  # Adjust column name if needed
+                grafana_expression = row['grafana_expression']  # Adjust column name if needed
+
+                # Write to the text file in the specified format
+                txt_file.write(f"{view_column_name}|{grafana_expression}\n")
+
         print(f"TXT file created: {output_txt}")
+
+    except FileNotFoundError:
+        print(f"Error: The file {input_file} was not found.")
+    except KeyError as e:
+        print(f"Error: Missing column in input file - {e}")
     except Exception as e:
-        print(f"Error processing file {input_csv}: {e}")
+        print(f"An error occurred: {e}")
+
+# Example usage:
+input_file = r"C:\Users\billaal\Documents\python\All_metrics\upf_offset.csv"  # Input CSV or Excel file
+output_txt = r"C:\Users\billaal\Documents\python\All_metrics\upf_offset.txt"  # Output TXT file
+
+extract_grafana_expression(input_file, output_txt)
