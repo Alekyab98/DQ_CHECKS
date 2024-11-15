@@ -1,0 +1,30 @@
+import pandas as pd
+
+def create_txt_files_from_csv(input_csv, output_txt):
+    try:
+        # Load the CSV file into a DataFrame
+        df = pd.read_csv(input_csv)
+        
+        # Check if the required columns are present
+        if 'grafana_expression' not in df.columns or 'view_column_name' not in df.columns:
+            raise KeyError("Required columns 'grafana_expression' and 'view_column_name' not found in the CSV file.")
+        
+        # Write to the TXT file in the specified format
+        with open(output_txt, 'w') as txt_file:
+            for index, row in df.iterrows():
+                txt_file.write(f"{row['view_column_name']} | {row['grafana_expression']}\n")
+        
+        print(f"TXT file created: {output_txt}")
+    
+    except FileNotFoundError:
+        print(f"Error: The file {input_csv} was not found.")
+    except KeyError as e:
+        print(f"Error: {e}")
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
+
+# Example usage:
+input_file = r"C:\Users\billaal\Documents\python\All_metrics\amf.csv"  # Adjust the path to your CSV file
+output_txt = r"C:\Users\billaal\Documents\python\All_metrics\amf_offset.txt"  # Output TXT file
+
+create_txt_files_from_csv(input_file, output_txt)
